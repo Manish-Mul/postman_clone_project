@@ -12,6 +12,7 @@
     "ace-builds": "^1.43.3",
     "axios": "^1.12.2",
     "curlconverter": "^3.4.0",
+    "dotenv": "^17.2.3",
     "jsonwebtoken": "^9.0.2",
     "react": "^18.3.1",
     "react-ace": "^14.0.1",
