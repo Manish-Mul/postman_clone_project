@@ -1,0 +1,30 @@
+{
+  "name": "postman_clone_test",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "pretauri": "xcopy /E /I /Y src-tauri\\backend\\node_modules src-tauri\\backend\\_node_modules",
+    "build": "vite build",
+    "test": "jest",
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "curlconverter": "^3.4.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.15.2"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "nodemon": "^3.1.10",
+    "supertest": "^6.3.4"
+  }
+}

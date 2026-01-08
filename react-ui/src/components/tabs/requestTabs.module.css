@@ -1,0 +1,103 @@
+.tabs_bar {
+  display: flex;
+  align-items: flex-end;
+  background: var(--panel-bg, #fff);
+  border-bottom: 1.5px solid var(--border-color, #e0e0e0);
+  padding: 0 12px 6px 6px;
+  position: relative;
+  z-index: 1020;
+
+  flex-wrap: nowrap;        /* prevent wrapping */
+  overflow-x: auto;         /* allow horizontal scroll */
+  overflow-y: hidden;
+  white-space: nowrap;
+}
+
+.tab, .active_tab {
+  padding: 7px 18px 6px 12px;
+  margin-right: 6px;
+  background: transparent;
+  border: none;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  color: var(--text-color, #212121);
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  transition: background .13s;
+  flex: 0 0 auto; 
+}
+
+.active_tab {
+  background: var(--theme-color, #1273de);
+  color: #fff;
+  font-weight: bold;
+}
+
+.new_tab {
+  font-size: 24px;
+  border: none;
+  background: none;
+  color: var(--theme-color, #1273de);
+  padding: 2px 10px;
+  margin-left: 6px;
+  cursor: pointer;
+}
+.tabs_bar {
+  display: flex;
+  align-items: flex-end;
+  background: var(--panel-bg, #fff);
+  border-bottom: 1.5px solid var(--border-color, #e0e0e0);
+  padding: 0 12px 6px 6px;
+  position: relative;      
+  z-index: 1020;          
+}
+
+.tab, .active_tab {
+  padding: 7px 18px 6px 12px;
+  margin-right: 6px;
+  background: transparent;
+  border: none;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  color: var(--text-color, #212121);
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  transition: background .13s;
+}
+
+/* The selected (active) tab */
+.active_tab {
+  background: var(--theme-color, #1273de);
+  color: #fff;
+  font-weight: bold;
+}
+
+.new_tab {
+  font-size: 24px;
+  border: none;
+  background: none;
+  color: var(--theme-color, #1273de);
+  padding: 2px 10px;
+  margin-left: 6px;
+  cursor: pointer;
+}
+
+/* Ensures any modal/dropdown above tabs is actually on top */
+.workspace_modal,
+.workspace_menu,
+.modal_overlay {
+  position: absolute;  
+  z-index: 1300 !important; 
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+  border-radius: 10px;
+}
+
+/* Make sure environments popover/panel/dropdown is below modals */
+.environment_panel, .env_dropdown, .env-picker {
+  z-index: 1032 !important; 
+  position: absolute;
+}
+

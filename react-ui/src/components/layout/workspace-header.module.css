@@ -1,0 +1,98 @@
+.workspace_header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background: var(--color-surface, #fff);
+  border-bottom: 1px solid var(--color-border, #eee);
+  z-index: 1201;           
+  position: relative;      
+}
+
+/* Overlay background for modal/dropdown */
+.workspace_modal {
+  position: absolute; 
+  top: 56px;          
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 340px;
+  max-width: 440px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+  z-index: 1300;       
+  padding-bottom: 16px;
+  overflow: visible;
+}
+
+/* Block environments panel behind modal */
+.environment_panel {
+  z-index: 1009 !important;
+}
+
+/* Workspace left area */
+.left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.icon {
+  font-size: 20px;
+}
+
+.workspace_name {
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+  user-select: none;
+}
+
+.workspace_name:hover {
+  background-color: var(--color-secondary, #f6f6f6);
+}
+
+.workspace_input {
+  font-size: 15px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border: 2px solid var(--color-primary, #39f);
+  border-radius: 6px;
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #222);
+  outline: none;
+  min-width: 200px;
+  transition: border-color 0.2s ease;
+}
+
+.workspace_input:focus {
+  border-color: var(--color-primary-hover, #177fff);
+}
+
+.right {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  background: var(--color-secondary, #f3f6fa);
+  color: var(--color-text, #333);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.btn:hover {
+  background: var(--color-secondary-hover, #e9f1fb);
+}
+
+.btn:active {
+  background: var(--color-secondary-active, #d9e6f8);
+}
