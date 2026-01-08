@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+.env.production
+tauri/target/
+tauri/src-tauri/target/
+.DS_Store
+*.log
+npm-debug.log*
+Thumbs.db
+src-tauri/target/
