@@ -9,6 +9,12 @@ const StoreReducer = (state, action) => {
     case "SET_CURL_PARSED":
       return { ...state, curlParsedRequest: action.payload };
 
+    case 'OPEN_COLLECTION_IMPORT_MODAL':
+      return { ...state, showCollectionImportModal: true };
+
+    case 'CLOSE_COLLECTION_IMPORT_MODAL':
+      return { ...state, showCollectionImportModal: false };
+
     case 'SET_OVERVIEW':
       return {
         ...state,
@@ -63,8 +69,10 @@ const StoreReducer = (state, action) => {
     case 'SET_AUTH':
       return {
         ...state,
-        auth: action.payload,
-        authHeader: '',
+        auth: {
+          ...(state.auth || { type: 'none' }),
+          ...action.payload,
+        },
       };
     case 'SET_AUTH_LOCATION':
       return {
@@ -81,6 +89,11 @@ const StoreReducer = (state, action) => {
         ...state,
         requestHeaders: action.payload,
       };
+    case 'SET_INTERPOLATED_HEADERS_PREVIEW':
+      return {
+        ...state,
+        interpolatedHeadersPreview: action.payload,
+      };
     case 'SET_PAYLOAD':
       return {
         ...state,
@@ -92,25 +105,28 @@ const StoreReducer = (state, action) => {
     case 'SET_FORM_SUBMIT':
       return {
         ...state,
-        formData: {
-          ...state.formData,
-          ...action.payload, // method, url, params, payload, headers
-          // bodyType, formDataRows, urlEncodedRows stay untouched
-        },
+        tabs: state.tabs.map(tab =>
+          tab.id === state.currentTabId
+            ? { ...tab, auth: action.payload.auth }
+            : tab
+        ),
         formSubmitted: true,
       };
 
     case 'CANCEL_FORM_SUBMIT':
       return {
         ...state,
-        formData: {
-          method: '',
-          url: '',
-          params: '',
-          payload: null,
-        },
         formSubmitted: false,
       };
+    case 'SET_METHOD':
+      return {
+        ...state,
+        formData: {
+          ...state.formData,
+          method: action.payload,
+        },
+      };
+
     case 'SET_RAW_BODY_TYPE':
       return {
         ...state,
@@ -133,7 +149,7 @@ const StoreReducer = (state, action) => {
           [state.currentTabId]: action.payload,
         },
         apiError: null,
-        formSubmitted: false,
+        formSubmitted: state.formSubmitted,
       };
 
     case 'SET_API_ERROR':
@@ -217,41 +233,83 @@ const StoreReducer = (state, action) => {
         ...state,
         triggerSendFromHistory: action.payload,
       };
-    case "NEW_REQUEST":
+      // in initial state
+      const initialState = {
+        // ...
+        formData: { /* ... */ },
+        newRequestJustOpened: false,
+      };
+
+    // in NEW_REQUEST
+    case 'NEW_REQUEST': {
       return {
         ...state,
+        newRequestJustOpened: true,
         formData: {
-          url: "",
-          method: "",
+          url: '',
+          method: '',
           params: [],
           payload: '',
-          bodyType: "",
-          formDataRows: Array.isArray(action.payload) ? action.payload : [],
-          urlEncodedRows: Array.isArray(action.payload) ? action.payload : [],
-          headers: {}
+          bodyType: '',
+          formDataRows: [],
+          urlEncodedRows: [],
+          headers: {},
         },
-        apiResponse: null,
-        responseUI: false,
-        formSubmitted: false
-      };
-    case "OPEN_HISTORY_IN_NEW_TAB": {
-      const newId = "tab-" + Date.now();
-      return {
-        ...state,
-        tabs: [
-          ...state.tabs,
-          {
-            id: newId,
-            title: action.payload.url || "History Request",
-            method: action.payload.method || "",
-            url: action.payload.url || "",
-            params: action.payload.params || "",
-            payload: action.payload.body || "",
-          }
-        ],
-        currentTabId: newId,
+        // ...tabs clearing etc
       };
     }
+
+    // whenever you type or send, clear the flag
+    case 'SET_URL':
+    case 'SET_METHOD':
+    case 'MERGE_FORM_DATA':
+      return {
+        ...state,
+        newRequestJustOpened: false,
+        formData: {
+          ...state.formData,
+          ...(action.type === 'SET_URL' && { url: action.payload }),
+          ...(action.type === 'SET_METHOD' && { method: action.payload }),
+          ...(action.type === 'MERGE_FORM_DATA' && action.payload),
+        },
+      };
+    // case 'DELETE_REQUEST': {
+    //   const { workspaceId, collectionId, requestId } = action;
+
+    //   return {
+    //     ...state,
+    //     [workspaceId]: (state[workspaceId] || []).map(col =>
+    //       col.collection_id !== collectionId
+    //         ? col
+    //         : {
+    //           ...col,
+    //           requests: (col.requests || []).filter(
+    //             r => r.request_id !== requestId
+    //           ),
+    //         }
+    //     ),
+    //   };
+    // }
+    case 'OPEN_HISTORY_IN_NEW_TAB': {
+  const newId = 'tab-' + Date.now();
+  return {
+    ...state,
+    tabs: [
+      ...state.tabs,
+      {
+        id: newId,
+        workspaceId: state.currentWorkspaceId,   // ✅ add this
+        title: action.payload.url || 'History Request',
+        method: action.payload.method || '',
+        url: action.payload.url || '',
+        params: action.payload.params || '',
+        payload: action.payload.body || '',
+      },
+    ],
+    currentTabId: newId,
+  };
+}
+
     case "UPDATE_ACTIVE_TAB":
       return {
         ...state,
@@ -270,11 +328,12 @@ const StoreReducer = (state, action) => {
           ...state.tabs,
           {
             id: newId,
+            workspaceId: state.currentWorkspaceId,   // ✅ add this
             title: 'Untitled Request',
-            method: '',
+            method: 'GET',
             url: '',
             params: '',
-            payload: null,
+            payload: '',
           },
         ],
         currentTabId: newId,
@@ -282,10 +341,9 @@ const StoreReducer = (state, action) => {
           ...state.apiResponses,
           [newId]: null,
         },
-        apiResponse: null,      // optional legacy clear
-        responseUI: false,      // so ResponseViewer shows blank placeholder
+        apiResponse: null,
+        responseUI: false,
         formSubmitted: false,
-        // optional: clear shared formData to blank when new tab is active
         formData: {
           url: '',
           method: '',
@@ -298,6 +356,7 @@ const StoreReducer = (state, action) => {
         },
       };
     }
+
     case 'CLOSE_TAB': {
       const idx = state.tabs.findIndex(tab => tab.id === action.id);
       const newTabs = state.tabs.filter(tab => tab.id !== action.id);
@@ -330,7 +389,9 @@ const StoreReducer = (state, action) => {
     }
 
     case 'SET_CURRENT_TAB': {
-      const tab = state.tabs.find(t => t.id === action.id);
+      const tab = state.tabs.find(
+        t => t.id === action.id && t.workspaceId === state.currentWorkspaceId
+      );
       return {
         ...state,
         currentTabId: action.id,
@@ -340,9 +401,9 @@ const StoreReducer = (state, action) => {
             url: tab.url || '',
             method: tab.method || '',
             payload: tab.payload || '',
-            // leave bodyType, rows, headers as-is or reset if you prefer
           }
           : state.formData,
+        auth: tab?.auth || { type: 'none' },
       };
     }
 
@@ -385,99 +446,18 @@ const StoreReducer = (state, action) => {
     case "SET_CANCEL_HANDLER":
       return { ...state, cancelHandler: action.payload };
 
-    case 'CREATE_WORKSPACE': {
-      const newId = 'workspace-' + Date.now();
-      return {
-        ...state,
-        workspaces: [
-          ...state.workspaces,
-          {
-            id: newId,
-            name: action.payload.name || 'New Workspace',
-            createdAt: Date.now(),
-          }
-        ],
-        currentWorkspaceId: newId, // Switch to new workspace
-      };
-    }
-
-    case 'SWITCH_WORKSPACE':
+    case 'SET_CURRENT_WORKSPACE_ID': {
+      const wsTabs = state.tabs.filter(t => t.workspaceId === action.payload);
+      const newCurrentTabId = wsTabs.length > 0 ? wsTabs[0].id : null;  // 👈 use first tab’s id
       return {
         ...state,
         currentWorkspaceId: action.payload,
-      };
-
-    case 'RENAME_WORKSPACE':
-      return {
-        ...state,
-        workspaces: state.workspaces.map(ws =>
-          ws.id === action.payload.id
-            ? { ...ws, name: action.payload.name }
-            : ws
-        ),
-      };
-
-    case 'DELETE_WORKSPACE': {
-      const filtered = state.workspaces.filter(ws => ws.id !== action.payload);
-      let newCurrent = state.currentWorkspaceId;
-
-      // If deleting current workspace, switch to first available
-      if (state.currentWorkspaceId === action.payload && filtered.length > 0) {
-        newCurrent = filtered[0].id;
-      }
-
-      // Keep at least one workspace
-      if (filtered.length === 0) {
-        const defaultWs = {
-          id: 'workspace-' + Date.now(),
-          name: 'My Workspace',
-          createdAt: Date.now(),
-        };
-        return {
-          ...state,
-          workspaces: [defaultWs],
-          currentWorkspaceId: defaultWs.id,
-        };
-      }
-
-      return {
-        ...state,
-        workspaces: filtered,
-        currentWorkspaceId: newCurrent,
+        currentTabId: newCurrentTabId,
+        apiResponse: null,
+        responseUI: false,
+        formSubmitted: false,
       };
     }
-
-    case 'SET_ACTIVE_ENVIRONMENT':
-      return {
-        ...state,
-        activeEnvironmentId: action.payload,
-      };
-
-    case 'SET_FOLDERS':
-      return {
-        ...state,
-        folders: action.payload
-      };
-
-    case 'ADD_FOLDER':
-      return {
-        ...state,
-        folders: [...(state.folders || []), action.payload]
-      };
-
-    case 'DELETE_FOLDER':
-      return {
-        ...state,
-        folders: state.folders.filter(f => f.folder_id !== action.folderId)
-      };
-
-    case 'UPDATE_FOLDER':
-      return {
-        ...state,
-        folders: state.folders.map(f =>
-          f.folder_id === action.folderId ? { ...f, ...action.payload } : f
-        )
-      };
 
     default:
       return state;

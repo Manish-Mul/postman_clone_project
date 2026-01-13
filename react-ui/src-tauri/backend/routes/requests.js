@@ -6,34 +6,33 @@ const { authenticateToken } = require('../middleware/auth');
 // CREATE request
 router.post('/', authenticateToken, (req, res) => {
   const { request_name, method, url, collection_id, folder_id } = req.body;
-  const created_by = req.user.user_id;  
+  const created_by = req.user.id;
 
-  db.query(
-    'INSERT INTO requests (request_name, method, url, collection_id, folder_id, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-    [request_name, method, url, collection_id, folder_id, created_by],
-    (err, result) => {
-      if (err) return res.status(500).json(err);
-      res.json({ id: result.insertId, request_name });
-    }
-  );
+  const result = db.prepare(`
+    INSERT INTO requests (name, method, url, collection_id, folder_id, created_by, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+  `).run(request_name, method, url, collection_id, folder_id, created_by);
+
+  res.json({ id: result.lastInsertRowid, request_name });
 });
 
-// GET all requests 
+// GET all requests
 router.get('/', authenticateToken, (req, res) => {
-  db.query('SELECT * FROM requests WHERE created_by = ?', [req.user.user_id], (err, rows) => {
-    if (err) return res.status(500).json(err);
-    res.json(rows);
-  });
+  const rows = db.prepare(`
+    SELECT * FROM requests WHERE created_by = ?
+  `).all(req.user.id);
+
+  res.json(rows);
 });
 
-// GET a specific request by ID
+// GET specific request
 router.get('/:id', authenticateToken, (req, res) => {
-  db.query('SELECT * FROM requests WHERE request_id = ? AND created_by = ?', 
-    [req.params.id, req.user.user_id], (err, rows) => {
-      if (err) return res.status(500).json(err);
-      if (rows.length === 0) return res.status(404).json({ error: 'Request not found' });
-      res.json(rows[0]);
-    });
+  const row = db.prepare(`
+    SELECT * FROM requests WHERE id = ? AND created_by = ?
+  `).get(req.params.id, req.user.id);
+
+  if (!row) return res.status(404).json({ error: 'Request not found' });
+  res.json(row);
 });
 
 // UPDATE request
@@ -41,30 +40,31 @@ router.put('/:id', authenticateToken, (req, res) => {
   const { request_name, url } = req.body;
   const requestId = req.params.id;
 
-  db.query(
-    'UPDATE requests SET request_name = ?, url = ? WHERE request_id = ? AND created_by = ?',
-    [request_name, url, requestId, req.user.user_id],
-    (err, result) => {
-      if (err) return res.status(500).json(err);
-      if (result.affectedRows === 0) return res.status(404).json({ error: 'Request not found or not authorized' });
-      res.json({ message: 'Request updated successfully' });
-    }
-  );
+  const result = db.prepare(`
+    UPDATE requests SET name = ?, url = ?
+    WHERE id = ? AND created_by = ?
+  `).run(request_name, url, requestId, req.user.id);
+
+  if (result.changes === 0) {
+    return res.status(404).json({ error: 'Request not found or not authorized' });
+  }
+
+  res.json({ message: 'Request updated successfully' });
 });
 
 // DELETE request
 router.delete('/:id', authenticateToken, (req, res) => {
   const requestId = req.params.id;
 
-  db.query(
-    'DELETE FROM requests WHERE request_id = ? AND created_by = ?',
-    [requestId, req.user.user_id],
-    (err, result) => {
-      if (err) return res.status(500).json(err);
-      if (result.affectedRows === 0) return res.status(404).json({ error: 'Request not found or not authorized' });
-      res.json({ message: 'Request deleted successfully' });
-    }
-  );
+  const result = db.prepare(`
+    DELETE FROM requests WHERE id = ? AND created_by = ?
+  `).run(requestId, req.user.id);
+
+  if (result.changes === 0) {
+    return res.status(404).json({ error: 'Request not found or not authorized' });
+  }
+
+  res.json({ message: 'Request deleted successfully' });
 });
 
 module.exports = router;

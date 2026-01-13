@@ -6,6 +6,7 @@ import '../src/monacoWorkers';
 import LandingPage from './pages/LandingPage';
 import SignInPage from './pages/SignInPage';
 import SignupPage from './pages/SignupPage';
+import OAuthCallback from './pages/OAuthCallback';
 
 // Layout
 import Footer from './components/layout/Footer';
@@ -23,6 +24,11 @@ import EnvironmentsProvider from './contexts/Environments';
 import HistoryProvider from './contexts/History';
 import WorkspacesProvider from './contexts/Workspaces';
 import CurlImportModal from "./components/modals/CurlImportModal";
+import CollectionImportModal from './components/modals/CollectionImportModal';
+import { WorkspacesContext } from './contexts/Workspaces';
+import { buildWorkspaceSnapshot } from './utils/workspaceSnapshot';
+import GlobalVariablesProvider from './contexts/GlobalVariables';
+
 import './theme.css';
 
 // Protected Route Component
@@ -69,11 +75,13 @@ function PublicRoute({ children }) {
 
 function AppInterface() {
   const { state } = useContext(Context);
+  const { currentWorkspaceId } = useContext(WorkspacesContext);
+
+  console.log('AppInterface currentWorkspaceId:', currentWorkspaceId);
 
   return (
     <div className="App">
       <Header />
-      {/* WorkspaceHeader */}
       <section>
         {state && (
           <>
@@ -81,6 +89,10 @@ function AppInterface() {
               <Sidebar />
             </aside>
             <Playground />
+            {state.curlModalOpen && <CurlImportModal />}
+            {state.showCollectionImportModal && (
+              <CollectionImportModal workspaceId={currentWorkspaceId} />
+            )}
           </>
         )}
       </section>
@@ -89,64 +101,88 @@ function AppInterface() {
   );
 }
 
+const LOCAL_KEY = 'postmanClone:data:v1';
+
+function AutosaveManager() {
+  const { workspaces, loading } = useContext(WorkspacesContext);
+  const { collections } = useContext(CollectionsContext);
+  const { environments } = useContext(EnvironmentsContext);
+  const { history } = useContext(HistoryContext);
+
+  useEffect(() => {
+    if (loading) return; // avoid saving while bootstrapping
+    const snapshot = buildWorkspaceSnapshot({
+      workspacesState: workspaces,
+      collectionsState: collections,
+      environmentsState: environments,
+      historyState: history,
+    });
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(snapshot));
+  }, [workspaces, collections, environments, history, loading]);
+
+  return null;
+}
 
 function App() {
   return (
-    
     <AuthProvider>
-      <WorkspacesProvider>
-        <HistoryProvider>
-          <EnvironmentsProvider>
-            <Store>
-              <CollectionsProvider>
-                <ThemeProvider>
-                  <CurlImportModal/>
-                  <Routes>
-                    {/* Public Routes */}
-                    <Route 
-                      path="/" 
-                      element={
-                        <PublicRoute>
-                          <LandingPage />
-                        </PublicRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/signin" 
-                      element={
-                        <PublicRoute>
-                          <SignInPage />
-                        </PublicRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/signup" 
-                      element={
-                        <PublicRoute>
-                          <SignupPage />
-                        </PublicRoute>
-                      } 
-                    />
+      <GlobalVariablesProvider>
+        <WorkspacesProvider>
+          <HistoryProvider>
+            <EnvironmentsProvider>
+              <Store>
+                <CollectionsProvider>
+                  <ThemeProvider>
+                    <Routes>
+                      {/* Public Routes */}
+                      <Route
+                        path="/"
+                        element={
+                          <PublicRoute>
+                            <LandingPage />
+                          </PublicRoute>
+                        }
+                      />
+                      <Route
+                        path="/signin"
+                        element={
+                          <PublicRoute>
+                            <SignInPage />
+                          </PublicRoute>
+                        }
+                      />
+                      <Route
+                        path="/signup"
+                        element={
+                          <PublicRoute>
+                            <SignupPage />
+                          </PublicRoute>
+                        }
+                      />
 
-                    {/* Protected Routes */}
-                    <Route 
-                      path="/app" 
-                      element={
-                        <ProtectedRoute>
-                          <AppInterface />
-                        </ProtectedRoute>
-                      } 
-                    />
+                      {/* OAuth Redirect */}
+                      <Route path="/oauth-callback" element={<OAuthCallback />} />
 
-                    {/* All redirect */}
-                    <Route path="*" element={<Navigate to="/signin" replace />} />
-                  </Routes>
-                </ThemeProvider>
-              </CollectionsProvider>
-            </Store>
-          </EnvironmentsProvider>
-        </HistoryProvider>
-      </WorkspacesProvider>
+                      {/* Protected Routes */}
+                      <Route
+                        path="/app"
+                        element={
+                          <ProtectedRoute>
+                            <AppInterface />
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* All redirect */}
+                      <Route path="*" element={<Navigate to="/signin" replace />} />
+                    </Routes>
+                  </ThemeProvider>
+                </CollectionsProvider>
+              </Store>
+            </EnvironmentsProvider>
+          </HistoryProvider>
+        </WorkspacesProvider>
+      </GlobalVariablesProvider>
     </AuthProvider>
   );
 }

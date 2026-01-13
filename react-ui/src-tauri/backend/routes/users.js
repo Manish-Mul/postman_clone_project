@@ -1,108 +1,149 @@
-const express = require('express');
+// const express = require('express');
+// const router = express.Router();
+// const db = require('../db');
+// const bcrypt = require('bcryptjs');
+// const jwt = require('jsonwebtoken');
+
+// const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
+
+// // LOGIN
+// router.post('/login', (req, res) => {
+//   const { email, password } = req.body;
+
+//   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+//   if (!user) return res.status(401).json({ error: 'User not found' });
+
+//   const match = bcrypt.compareSync(password, user.password_hash);
+//   if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+
+//   const token = jwt.sign(
+//     {
+//       id: user.id,
+//       email: user.email,
+//       username: user.username
+//     },
+//     JWT_SECRET,
+//     { expiresIn: '7d' }
+//   );
+
+//   res.json({
+//     token,
+//     user: {
+//       id: user.id,
+//       username: user.username,
+//       email: user.email
+//     }
+//   });
+// });
+
+// // CREATE (register)
+// router.post('/', (req, res) => {
+//   const { username, email, password_hash } = req.body;
+//   try {
+//     const hash = bcrypt.hashSync(password_hash, 10);
+
+//     const result = db.prepare(`
+//       INSERT INTO users (username, email, password_hash, created_at)
+//       VALUES (?, ?, ?, datetime('now'))
+//     `).run(username, email, hash);
+
+//     res.json({ id: result.lastInsertRowid, username, email });
+//   } catch (err) {
+//     if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+//       return res.status(409).json({ error: 'User/email already exists' });
+//     }
+//     res.status(500).json({ error: err.message });
+//   }
+// });
+
+// // READ ALL
+// router.get('/', (req, res) => {
+//   const rows = db.prepare('SELECT * FROM users').all();
+//   res.json(rows);
+// });
+
+// // READ by ID
+// router.get('/:id', (req, res) => {
+//   const row = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+//   res.json(row);
+// });
+
+// // UPDATE
+// router.put('/:id', (req, res) => {
+//   const { username, email } = req.body;
+
+//   db.prepare(
+//     'UPDATE users SET username = ?, email = ? WHERE id = ?'
+//   ).run(username, email, req.params.id);
+
+//   res.json({ message: 'User updated successfully' });
+// });
+
+// // DELETE
+// router.delete('/:id', (req, res) => {
+//   db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
+//   res.json({ message: 'User deleted successfully' });
+// });
+
+// module.exports = router;
+
+const express = require("express");
 const router = express.Router();
-const db = require('../db');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken'); 
+const db = require("../db");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
-// Secret key for JWT 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
+const SECRET_KEY = "your_secret_key_here";
 
-// LOGIN 
-router.post('/login', (req, res) => {
-  const { email, password } = req.body;
-  
-  db.query('SELECT * FROM users WHERE email = ?', [email], (err, results) => {
-    if (err) return res.status(500).json({ error: 'DB error' });
-    if (results.length === 0) return res.status(401).json({ error: 'User not found' });
-    
-    const user = results[0];
-    
-    bcrypt.compare(password, user.password_hash, (err, match) => {
-      if (err) return res.status(500).json({ error: 'Bcrypt error' });
-      if (!match) return res.status(401).json({ error: 'Invalid credentials' });
-      
-      // Generate JWT token
-      const token = jwt.sign(
-        { 
-          id: user.user_id, 
-          email: user.email,
-          username: user.username 
-        },
-        JWT_SECRET,
-        { expiresIn: '7d' } // Token expires in 7 days
-      );
-      
-      // Return token 
-      res.json({ 
-        token,
-        user: {
-          id: user.user_id,
-          username: user.username,
-          email: user.email
-        }
-      });
-    });
-  });
-});
+router.post("/signup", async (req, res) => {
+  const { username, email, password } = req.body;
+  if (!username || !email || !password) {
+    return res.status(400).json({ error: "All fields required" });
+  }
 
+  const hash = await bcrypt.hash(password, 10);
 
-// CREATE (register)
-router.post('/', async (req, res) => {
-  const { username, email, password_hash } = req.body;
   try {
-    const hash = await bcrypt.hash(password_hash, 10);
-    db.query(
-      'INSERT INTO users (username, email, password_hash, created_at) VALUES (?, ?, ?, NOW())',
-      [username, email, hash],
-      (err, result) => {
-        if (err) {
-          if (err.code === 'ER_DUP_ENTRY') {
-            return res.status(409).json({ error: 'User/email already exists' });
-          }
-          return res.status(500).json({ error: err.message });
-        }
-        res.json({ id: result.insertId, username, email });
-      }
-    );
+    const stmt = db.prepare(`
+      INSERT INTO users (username, email, password_hash)
+      VALUES (?, ?, ?)
+    `);
+    stmt.run(username, email, hash);
+
+    res.status(201).json({ message: "User registered" });
   } catch (err) {
-    res.status(500).json({ error: 'Error hashing password' });
+    if (err.message.includes("UNIQUE")) {
+      return res.status(409).json({ error: "User already exists" });
+    }
+    res.status(500).json({ error: err.message });
   }
 });
 
-// READ ALL
-router.get('/', (req, res) => {
-  db.query('SELECT * FROM users', (err, rows) => {
-    if (err) return res.status(500).json(err);
-    res.json(rows);
-  });
-});
+router.post("/login", (req, res) => {
+  const { email, password } = req.body;
 
-// READ by ID
-router.get('/:id', (req, res) => {
-  db.query('SELECT * FROM users WHERE user_id = ?', [req.params.id], (err, rows) => {
-    if (err) return res.status(500).json(err);
-    res.json(rows[0]);
-  });
-});
+  const user = db
+    .prepare("SELECT * FROM users WHERE email = ?")
+    .get(email);
 
-// UPDATE
-router.put('/:id', (req, res) => {
-  const { username, email } = req.body;
-  db.query(
-    'UPDATE users SET username = ?, email = ? WHERE user_id = ?',
-    [username, email, req.params.id],
-    (err) => {
-      if (err) return res.status(500).json(err);
-      res.json({ message: 'User updated successfully' });
-    }
+  if (!user) return res.status(400).json({ error: "Invalid credentials" });
+
+  const match = bcrypt.compareSync(password, user.password_hash);
+  if (!match) return res.status(400).json({ error: "Invalid credentials" });
+
+  const token = jwt.sign(
+    { user_id: user.user_id, email: user.email, username: user.username },
+    SECRET_KEY,
+    { expiresIn: "1h" }
   );
-});
 
-// DELETE
-router.delete('/:id', (req, res) => {
-  db.query('DELETE FROM users WHERE user_id = ?', [req.params.id], (err) => {
-    if (err) return res.status(500).json(err);
-    res.json({ message: 'User deleted successfully' });
+  res.json({
+    token,
+    user: {
+      user_id: user.user_id,
+      username: user.username,
+      email: user.email
+    }
   });
 });
 

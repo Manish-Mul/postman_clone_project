@@ -27,7 +27,14 @@ const RawPayload = () => {
 
   const handleChange = (val) => {
     setInput(val);
+    dispatch({ type: 'SET_BODY_TYPE', payload: 'raw' });
     dispatch({ type: 'SET_PAYLOAD', payload: val });
+    dispatch({ type: 'UPDATE_TAB_FIELD', field: 'payload', value: val });
+    dispatch({                                                // also update tab.payload
+      type: 'UPDATE_TAB_FIELD',
+      field: 'payload',
+      value: val,
+    });
   };
 
   return (

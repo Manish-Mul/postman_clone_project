@@ -18,6 +18,7 @@
     "react-ace": "^14.0.1",
     "react-dom": "^18.3.1",
     "react-feather": "^2.0.10",
+    "react-json-view-lite": "^2.5.0",
     "react-router-dom": "^7.9.4",
     "vite": "^7.1.9"
   },

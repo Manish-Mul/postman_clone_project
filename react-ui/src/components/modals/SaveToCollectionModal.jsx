@@ -3,9 +3,10 @@ import { CollectionsContext } from '../../contexts/Collections';
 import { Context } from '../../contexts/Store';
 import styles from './SaveModal.module.css';
 
-const SaveToCollectionModal = ({ closeModal }) => {
-  const { collections, createCollection, saveRequest, refetchCollections } = useContext(CollectionsContext);
+const SaveToCollectionModal = ({ closeModal, initialFolderId = null }) => {
+  const { collections, createCollection, saveRequest, refetchCollections, folders } = useContext(CollectionsContext);
   const { state } = useContext(Context);
+  const [selectedFolderId, setSelectedFolderId] = useState();
 
   // Get collections for current workspace
   const currentCollections = collections[state.currentWorkspaceId] || [];
@@ -16,20 +17,44 @@ const SaveToCollectionModal = ({ closeModal }) => {
   const [creatingNew, setCreatingNew] = useState(false);
 
   const handleSave = async () => {
-  if (creatingNew) {
-    // Create new collection and save request
-    if (!newCollectionName.trim()) {
-      alert('Please enter a collection name');
-      return;
-    }
+    if (creatingNew) {
+      // Create new collection and save request
+      if (!newCollectionName.trim()) {
+        alert('Please enter a collection name');
+        return;
+      }
 
-    try {
-      const newCollection = await createCollection(
-        state.currentWorkspaceId,
-        newCollectionName.trim()
-      );
+      try {
+        const newCollection = await createCollection(
+          state.currentWorkspaceId,
+          newCollectionName.trim()
+        );
 
-      if (newCollection) {
+        if (newCollection) {
+          const requestData = {
+            name: requestName.trim() || 'Untitled Request',
+            method: state.formData?.method || 'GET',
+            url: state.formData?.url || '',
+            folder_id: selectedFolderId || null,
+          };
+
+          await saveRequest(newCollection.collection_id, requestData);
+          await refetchCollections();
+          alert('Collection created and request saved!');
+          closeModal();
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to create collection or save request');
+      }
+    } else {
+      // Save to existing collection
+      if (!selectedCollection) {
+        alert('Please select a collection');
+        return;
+      }
+
+      try {
         const requestData = {
           name: requestName.trim() || 'Untitled Request',
           method: state.formData?.method || 'GET',
@@ -37,40 +62,19 @@ const SaveToCollectionModal = ({ closeModal }) => {
           folder_id: null
         };
 
-        await saveRequest(newCollection.collection_id, requestData);
-        await refetchCollections();  
-        alert('Collection created and request saved!');
+        await saveRequest(selectedCollection, {
+          ...requestData,
+          folder_id: selectedFolderId || null
+        });
+        await refetchCollections();
+        alert('Request saved to collection!');
         closeModal();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to save request');
       }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to create collection or save request');
     }
-  } else {
-    // Save to existing collection
-    if (!selectedCollection) {
-      alert('Please select a collection');
-      return;
-    }
-
-    try {
-      const requestData = {
-        name: requestName.trim() || 'Untitled Request',
-        method: state.formData?.method || 'GET',
-        url: state.formData?.url || '',
-        folder_id: null
-      };
-
-      await saveRequest(selectedCollection, requestData);
-      await refetchCollections();  
-      alert('Request saved to collection!');
-      closeModal();
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to save request');
-    }
-  }
-};
+  };
 
 
   return (
@@ -117,6 +121,26 @@ const SaveToCollectionModal = ({ closeModal }) => {
               <span style={{ marginLeft: 8 }}>Create new collection</span>
             </label>
           </div>
+
+          {/* Folder selection for that collection */}
+          {!creatingNew && selectedCollection && (
+            <div className={styles.formGroup}>
+              <label>Folder (optional)</label>
+              <select
+                value={selectedFolderId || ''}
+                onChange={e =>
+                  setSelectedFolderId(e.target.value ? Number(e.target.value) : null)
+                }
+              >
+                <option value="">-- Collection root --</option>
+                {(folders[selectedCollection] || []).map(folder => (
+                  <option key={folder.folder_id} value={folder.folder_id}>
+                    {folder.folder_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Existing Collection Dropdown */}
           {!creatingNew && (

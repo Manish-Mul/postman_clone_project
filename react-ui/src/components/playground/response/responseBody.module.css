@@ -1,0 +1,13 @@
+/* responseBody.module.css */
+.jsonTree {
+  font-family: Menlo, Monaco, Consolas, 'Courier New', monospace;
+  font-size: 13px;
+}
+
+.key {
+  color: #c92c2c;
+}
+
+.primitive {
+  color: #1a7f37;
+}

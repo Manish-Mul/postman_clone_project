@@ -1,9 +1,11 @@
 import { useContext, useState } from 'react';
 import { WorkspacesContext } from '../../contexts/Workspaces';
+import { Context } from '../../contexts/Store'; // ✅ Add this import
 import styles from './workspace.module.css';
 
 const WorkspaceDropdown = ({ isOpen, onClose }) => {
   const { workspaces, currentWorkspaceId, createWorkspace, updateWorkspace, deleteWorkspace, switchWorkspace } = useContext(WorkspacesContext);
+  const { dispatch } = useContext(Context); // ✅ Add this
   
   const [showCreateInput, setShowCreateInput] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
@@ -31,7 +33,12 @@ const WorkspaceDropdown = ({ isOpen, onClose }) => {
   };
 
   const handleSwitchWorkspace = (workspaceId) => {
-    switchWorkspace(workspaceId);
+    console.log('🔄 Switching to workspace:', workspaceId);
+    
+    // ✅ Update both contexts
+    switchWorkspace(workspaceId); // Updates WorkspacesContext
+    dispatch({ type: 'SET_CURRENT_WORKSPACE_ID', payload: workspaceId }); // Updates Store
+    
     onClose();
   };
 

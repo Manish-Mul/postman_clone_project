@@ -5,7 +5,7 @@ const initialState = {
   workspaces: [],
   currentWorkspaceId: null,
   currentWorkspace: null,
-  loading: false,
+  loading: true, // Start with loading: true
   error: null
 };
 
@@ -16,18 +16,25 @@ function reducer(state, action) {
       const fromStorage = saved ? Number(saved) : null;
       const fallback = action.payload[0]?.workspace_id || null;
 
+      const finalWorkspaceId = fromStorage ?? state.currentWorkspaceId ?? fallback;
+
+      // Save to localStorage if we're setting a new one
+      if (finalWorkspaceId) {
+        localStorage.setItem('currentWorkspaceId', String(finalWorkspaceId));
+      }
+
       return {
         ...state,
         workspaces: action.payload,
-        currentWorkspaceId: fromStorage ?? state.currentWorkspaceId ?? fallback,
+        currentWorkspaceId: finalWorkspaceId,
       };
     }
 
     case 'ADD_WORKSPACE':
+      localStorage.setItem('currentWorkspaceId', String(action.payload.workspace_id));
       return {
         ...state,
         workspaces: [action.payload, ...state.workspaces],
-        // Set newly created workspace as current
         currentWorkspaceId: action.payload.workspace_id
       };
 
@@ -45,22 +52,30 @@ function reducer(state, action) {
       const remainingWorkspaces = state.workspaces.filter(
         ws => ws.workspace_id !== action.payload
       );
+      const newCurrentId = state.currentWorkspaceId === action.payload
+        ? remainingWorkspaces[0]?.workspace_id || null
+        : state.currentWorkspaceId;
+
+      if (newCurrentId) {
+        localStorage.setItem('currentWorkspaceId', String(newCurrentId));
+      } else {
+        localStorage.removeItem('currentWorkspaceId');
+      }
+
       return {
         ...state,
         workspaces: remainingWorkspaces,
-        // Switch to first workspace if current was deleted
-        currentWorkspaceId: state.currentWorkspaceId === action.payload
-          ? remainingWorkspaces[0]?.workspace_id || null
-          : state.currentWorkspaceId
+        currentWorkspaceId: newCurrentId
       };
 
     case 'SWITCH_WORKSPACE':
+      localStorage.setItem('currentWorkspaceId', String(action.payload));
       return {
         ...state,
         currentWorkspaceId: action.payload
       };
 
-    case 'SET_WORKSPACE_BY_ID':  // New case to set a single workspace
+    case 'SET_WORKSPACE_BY_ID':
       return {
         ...state,
         currentWorkspace: action.payload
@@ -81,7 +96,14 @@ export const WorkspacesContext = createContext();
 
 const WorkspacesProvider = ({ children }) => {
   const { token, user } = useContext(AuthContext);
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(reducer, {
+    ...initialState,
+    // Initialize currentWorkspaceId from localStorage
+    currentWorkspaceId: (() => {
+      const saved = localStorage.getItem('currentWorkspaceId');
+      return saved ? Number(saved) : null;
+    })()
+  });
 
   // Fetch workspaces on mount
   useEffect(() => {
@@ -90,9 +112,22 @@ const WorkspacesProvider = ({ children }) => {
     }
   }, [token, user]);
 
-  const fetchWorkspaces = async () => {
-    if (!token) return;
+  // Debug log
+  useEffect(() => {
+    console.log('WorkspacesContext state:', {
+      currentWorkspaceId: state.currentWorkspaceId,
+      workspacesCount: state.workspaces.length,
+      loading: state.loading
+    });
+  }, [state.currentWorkspaceId, state.workspaces, state.loading]);
 
+  const fetchWorkspaces = async () => {
+    if (!token) {
+      console.log('No token available for fetching workspaces');
+      return;
+    }
+
+    console.log('Starting fetchWorkspaces...');
     dispatch({ type: 'SET_LOADING', payload: true });
 
     try {
@@ -102,12 +137,16 @@ const WorkspacesProvider = ({ children }) => {
         }
       });
 
+      console.log('Fetch response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to fetch workspaces');
+        throw new Error(`Failed to fetch workspaces: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('Fetched workspaces from DB:', data);
+      console.log('Fetched workspaces from DB - RAW DATA:', data);
+      console.log('Is array?', Array.isArray(data));
+      console.log('Length:', data?.length);
 
       dispatch({ type: 'SET_WORKSPACES', payload: data });
     } catch (err) {
@@ -136,7 +175,6 @@ const WorkspacesProvider = ({ children }) => {
 
       const data = await response.json();
 
-      // Dispatch action to set the fetched workspace
       dispatch({ type: 'SET_WORKSPACE_BY_ID', payload: data });
     } catch (err) {
       console.error('Error fetching workspace by ID:', err);
@@ -171,7 +209,6 @@ const WorkspacesProvider = ({ children }) => {
         type: 'ADD_WORKSPACE',
         payload: result
       });
-      localStorage.setItem('currentWorkspaceId', String(result.workspace_id));
 
       return result;
     } catch (err) {
@@ -238,14 +275,16 @@ const WorkspacesProvider = ({ children }) => {
   };
 
   const switchWorkspace = (workspaceId) => {
-    localStorage.setItem('currentWorkspaceId', String(workspaceId));
     dispatch({ type: 'SWITCH_WORKSPACE', payload: workspaceId });
   };
-  
 
   return (
     <WorkspacesContext.Provider value={{
-      ...state,
+      workspaces: state.workspaces,
+      currentWorkspaceId: state.currentWorkspaceId,
+      currentWorkspace: state.currentWorkspace,
+      loading: state.loading,
+      error: state.error,
       dispatch,
       createWorkspace,
       updateWorkspace,

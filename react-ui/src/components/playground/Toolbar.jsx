@@ -1,15 +1,17 @@
 import { useContext, useMemo } from 'react';
 import { Context } from '../../contexts/Store';
 import { EnvironmentsContext } from '../../contexts/Environments';
+import { WorkspacesContext } from '../../contexts/Workspaces';
 import styles from './playground.module.css';
 
 const Toolbar = () => {
   const { state, dispatch } = useContext(Context);
-  const { environments } = useContext(EnvironmentsContext);
+  const { environments, activeEnvironmentId, setActiveEnvironmentId } = useContext(EnvironmentsContext);
+  const { currentWorkspaceId } = useContext(WorkspacesContext);
 
   const currentEnvironments = useMemo(() => {
-    return environments[state.currentWorkspaceId] || [];
-  }, [environments, state.currentWorkspaceId]);
+    return environments[currentWorkspaceId] || [];
+  }, [environments, currentWorkspaceId]);
 
   const resetForm = (e) => {
     e.stopPropagation();
@@ -26,8 +28,9 @@ const Toolbar = () => {
   };
 
   const handleEnvironmentChange = (e) => {
-    const envId = e.target.value || null;
-    dispatch({ type: 'SET_ACTIVE_ENVIRONMENT', payload: envId });
+    const envId = e.target.value ? Number(e.target.value) : null;
+    setActiveEnvironmentId(envId);
+    console.log('🌍 Environment changed to:', envId);
   };
 
   return (
@@ -93,11 +96,19 @@ const Toolbar = () => {
 
       </div>
 
-      {/* Environment Selector */}
+      {/* Environment Selector - Like Postman */}
       <div className={styles.env_menu}>
         <select
-          value={state.activeEnvironmentId || ''}
+          value={activeEnvironmentId || ''}
           onChange={handleEnvironmentChange}
+          style={{
+            padding: '6px 12px',
+            borderRadius: '4px',
+            border: '1px solid var(--border-color)',
+            fontSize: '13px',
+            cursor: 'pointer',
+            minWidth: '150px'
+          }}
         >
           <option value="">No Environment</option>
           {currentEnvironments.map(env => (
@@ -106,6 +117,16 @@ const Toolbar = () => {
             </option>
           ))}
         </select>
+        {activeEnvironmentId && (
+          <span style={{ 
+            marginLeft: '8px', 
+            fontSize: '12px', 
+            color: '#4CAF50',
+            fontWeight: '500'
+          }}>
+            ✓ Active
+          </span>
+        )}
       </div>
     </div>
   );

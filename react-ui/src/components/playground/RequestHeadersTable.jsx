@@ -1,10 +1,18 @@
-import { useContext, useState, Fragment } from 'react';
+import { useContext, useState, useEffect, Fragment } from 'react';
 import { Context } from '../../contexts/Store';
+import { WorkspacesContext } from '../../contexts/Workspaces';
+import { EnvironmentsContext } from '../../contexts/Environments';
+import { useVariableScopes } from '../hooks/useVariableScopes';
+import { interpolateString } from '../../utils/variables';
 import styles from './playground.module.css';
 import style from './authHeader.module.css';
 
-const RequestHeadersTable = () => {
+const RequestHeadersTable = ({ localVars }) => {
   const { state, dispatch } = useContext(Context);
+  const { currentWorkspaceId } = useContext(WorkspacesContext);
+  const { activeEnvironmentId } = useContext(EnvironmentsContext);
+  const scopesFromHook = useVariableScopes(localVars);
+
   const [authHeader] = useState(() => {
     if (state.authLocation === 'header') {
       const header = state.authHeader.split(':');
@@ -26,6 +34,41 @@ const RequestHeadersTable = () => {
       return [{ keyName: '', value: '', selected: true }];
     }
   });
+
+  // ✅ Calculate interpolated previews for all headers
+  const [previews, setPreviews] = useState({});
+
+  useEffect(() => {
+    const localVarsMap = Object.fromEntries(
+      (localVars || []).filter((v) => v.key?.trim()).map((v) => [v.key, v.value])
+    );
+    const finalScopes = { ...scopesFromHook, localVars: localVarsMap };
+
+    const newPreviews = {};
+    inputList.forEach((header, index) => {
+      if (header.value && typeof header.value === 'string') {
+        const interpolated = interpolateString(header.value, finalScopes);
+        // Only store if different from original
+        if (interpolated !== header.value) {
+          newPreviews[index] = interpolated;
+        }
+      }
+    });
+
+    setPreviews(newPreviews);
+  }, [inputList, scopesFromHook, localVars, activeEnvironmentId]);
+
+  useEffect(() => {
+    if (state.requestHeaders.length) {
+      setInputList(
+        state.requestHeaders.map(h => ({
+          keyName: h.key,
+          value: h.value,
+          selected: true,
+        }))
+      );
+    }
+  }, [state.requestHeaders]);
 
   const handleInputChange = (e, index) => {
     const { name, value, checked } = e.target;
@@ -50,6 +93,7 @@ const RequestHeadersTable = () => {
     const headers = list
       .filter((header) => header.selected && header.keyName !== '')
       .map((header) => ({ key: header.keyName, value: header.value }));
+    console.log('🧪 Dispatching headers:', headers);
     dispatch({ type: 'SET_REQUEST_HEADERS', payload: headers });
   };
 
@@ -141,15 +185,36 @@ const RequestHeadersTable = () => {
                   />
                 </td>
                 <td>
-                  <input
-                    type="text"
-                    placeholder="Value"
-                    name="value"
-                    value={x.value}
-                    onChange={(e) => handleInputChange(e, i)}
-                    spellCheck={false}
-                    autoComplete="off"
-                  />
+                  <div style={{ position: 'relative', width: '100%' }}>
+                    <input
+                      type="text"
+                      placeholder="Value"
+                      name="value"
+                      value={x.value}
+                      onChange={(e) => handleInputChange(e, i)}
+                      spellCheck={false}
+                      autoComplete="off"
+                      style={{ width: '100%' }}
+                    />
+                    {/* ✅ Show preview if value contains variables */}
+                    {previews[i] && (
+                      <div style={{
+                        fontSize: '11px',
+                        color: '#4CAF50',
+                        marginTop: '2px',
+                        padding: '2px 4px',
+                        background: '#f0f9ff',
+                        borderRadius: '3px',
+                        border: '1px solid #e0f2fe',
+                        fontFamily: 'monospace',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        <span style={{ color: '#888', fontWeight: '600' }}>Preview:</span> {previews[i]}
+                      </div>
+                    )}
+                  </div>
                 </td>
                 <td>
                   <input type="text" placeholder="Description" />

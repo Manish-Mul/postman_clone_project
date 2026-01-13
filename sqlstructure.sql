@@ -1,143 +1,219 @@
--- Drop and recreate database
-DROP DATABASE IF EXISTS postman_clone_db;
-CREATE DATABASE postman_clone_db;
-USE postman_clone_db;
 
--- 1. USERS
-CREATE TABLE users (
-  user_id INT AUTO_INCREMENT PRIMARY KEY,
-  username VARCHAR(50) NOT NULL UNIQUE,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  password_hash VARCHAR(255) NOT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+DROP TABLE IF EXISTS `collections`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `collections` (
+  `collection_id` int NOT NULL AUTO_INCREMENT,
+  `collection_name` varchar(150) NOT NULL,
+  `workspace_id` int NOT NULL,
+  `created_by` int NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`collection_id`),
+  KEY `workspace_id` (`workspace_id`),
+  KEY `created_by` (`created_by`),
+  CONSTRAINT `collections_ibfk_1` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`workspace_id`) ON DELETE CASCADE,
+  CONSTRAINT `collections_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=62 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- 2. WORKSPACES
-CREATE TABLE workspaces (
-  workspace_id INT AUTO_INCREMENT PRIMARY KEY,
-  workspace_name VARCHAR(150) NOT NULL,
-  created_by INT NOT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE CASCADE
-) ENGINE=InnoDB;
 
--- 3. COLLECTIONS
-CREATE TABLE collections (
-  collection_id INT AUTO_INCREMENT PRIMARY KEY,
-  collection_name VARCHAR(150) NOT NULL,
-  workspace_id INT NOT NULL,
-  created_by INT NOT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
-  FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+DROP TABLE IF EXISTS `environment_variables`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `environment_variables` (
+  `var_id` int NOT NULL AUTO_INCREMENT,
+  `env_id` int NOT NULL,
+  `key` varchar(200) NOT NULL,
+  `value` varchar(1000) DEFAULT NULL,
+  `is_secret` tinyint(1) DEFAULT '0',
+  PRIMARY KEY (`var_id`),
+  KEY `env_id` (`env_id`),
+  CONSTRAINT `environment_variables_ibfk_1` FOREIGN KEY (`env_id`) REFERENCES `environments` (`env_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=81 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
--- 4. FOLDERS
-CREATE TABLE folders (
-  folder_id INT AUTO_INCREMENT PRIMARY KEY,
-  folder_name VARCHAR(150) NOT NULL,
-  collection_id INT NOT NULL,
-  parent_folder_id INT DEFAULT NULL,
-  FOREIGN KEY (collection_id) REFERENCES collections(collection_id) ON DELETE CASCADE,
-  FOREIGN KEY (parent_folder_id) REFERENCES folders(folder_id) ON DELETE SET NULL
-) ENGINE=InnoDB;
 
--- 5. REQUESTS
-CREATE TABLE requests (
-  request_id INT AUTO_INCREMENT PRIMARY KEY,
-  request_name VARCHAR(200) NOT NULL,
-  method ENUM('GET','POST','PUT','DELETE','PATCH') NOT NULL,
-  url VARCHAR(1000) NOT NULL,
-  collection_id INT DEFAULT NULL,
-  folder_id INT DEFAULT NULL,
-  created_by INT NOT NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (collection_id) REFERENCES collections(collection_id) ON DELETE SET NULL,
-  FOREIGN KEY (folder_id) REFERENCES folders(folder_id) ON DELETE SET NULL,
-  FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+DROP TABLE IF EXISTS `environments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `environments` (
+  `env_id` int NOT NULL AUTO_INCREMENT,
+  `env_name` varchar(150) NOT NULL,
+  `workspace_id` int NOT NULL,
+  `created_by` int NOT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`env_id`),
+  KEY `workspace_id` (`workspace_id`),
+  KEY `created_by` (`created_by`),
+  CONSTRAINT `environments_ibfk_1` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`workspace_id`) ON DELETE CASCADE,
+  CONSTRAINT `environments_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=43 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- 6. REQUEST_HEADERS
-CREATE TABLE request_headers (
-  header_id INT AUTO_INCREMENT PRIMARY KEY,
-  request_id INT NOT NULL,
-  `key` VARCHAR(200) NOT NULL,
-  `value` VARCHAR(1000),
-  FOREIGN KEY (request_id) REFERENCES requests(request_id) ON DELETE CASCADE
-) ENGINE=InnoDB;
 
--- 7. REQUEST_PARAMS
-CREATE TABLE request_params (
-  param_id INT AUTO_INCREMENT PRIMARY KEY,
-  request_id INT NOT NULL,
-  `key` VARCHAR(200) NOT NULL,
-  `value` VARCHAR(1000),
-  FOREIGN KEY (request_id) REFERENCES requests(request_id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+DROP TABLE IF EXISTS `folders`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `folders` (
+  `folder_id` int NOT NULL AUTO_INCREMENT,
+  `folder_name` varchar(150) NOT NULL,
+  `collection_id` int NOT NULL,
+  `created_by` int DEFAULT NULL,
+  `parent_folder_id` int DEFAULT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`folder_id`),
+  KEY `collection_id` (`collection_id`),
+  KEY `parent_folder_id` (`parent_folder_id`),
+  CONSTRAINT `folders_ibfk_1` FOREIGN KEY (`collection_id`) REFERENCES `collections` (`collection_id`) ON DELETE CASCADE,
+  CONSTRAINT `folders_ibfk_2` FOREIGN KEY (`parent_folder_id`) REFERENCES `folders` (`folder_id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=97 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- 8. REQUEST_BODY
-CREATE TABLE request_body (
-  body_id INT AUTO_INCREMENT PRIMARY KEY,
-  request_id INT NOT NULL UNIQUE,
-  body_type ENUM('raw','form-data','x-www-form-urlencoded','binary') NOT NULL,
-  content TEXT,
-  FOREIGN KEY (request_id) REFERENCES requests(request_id) ON DELETE CASCADE
-) ENGINE=InnoDB;
 
--- 9. RESPONSES
-CREATE TABLE responses (
-  response_id INT AUTO_INCREMENT PRIMARY KEY,
-  request_id INT NOT NULL,
-  status_code INT,
-  response_body TEXT,
-  response_time_ms INT,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (request_id) REFERENCES requests(request_id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+DROP TABLE IF EXISTS `global_variables`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `global_variables` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `key` varchar(255) NOT NULL,
+  `value` text,
+  `is_secret` tinyint(1) DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_user_key` (`user_id`,`key`)
+) ENGINE=InnoDB AUTO_INCREMENT=53 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- 10. ENVIRONMENTS
-CREATE TABLE environments (
-  env_id INT AUTO_INCREMENT PRIMARY KEY,
-  env_name VARCHAR(150) NOT NULL,
-  workspace_id INT NOT NULL,
-  created_by INT NOT NULL,
-  FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id) ON DELETE CASCADE,
-  FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE CASCADE
-) ENGINE=InnoDB;
 
--- 11. ENVIRONMENT_VARIABLES
-CREATE TABLE environment_variables (
-  var_id INT AUTO_INCREMENT PRIMARY KEY,
-  env_id INT NOT NULL,
-  `key` VARCHAR(200) NOT NULL,
-  `value` VARCHAR(1000),
-  FOREIGN KEY (env_id) REFERENCES environments(env_id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+DROP TABLE IF EXISTS `history`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `history` (
+  `history_id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `workspace_id` int DEFAULT NULL,
+  `method` varchar(10) NOT NULL,
+  `url` text NOT NULL,
+  `headers` text,
+  `params` text,
+  `body` text,
+  `response_status` int DEFAULT NULL,
+  `response_time` int DEFAULT NULL,
+  `created_at` datetime NOT NULL,
+  PRIMARY KEY (`history_id`),
+  KEY `user_id` (`user_id`),
+  KEY `workspace_id` (`workspace_id`),
+  CONSTRAINT `history_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  CONSTRAINT `history_ibfk_2` FOREIGN KEY (`workspace_id`) REFERENCES `workspaces` (`workspace_id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=1251 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- 12. Request Execution / History
-CREATE TABLE request_history (
-    history_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    workspace_id INT NOT NULL,
-    method ENUM('GET','POST','PUT','DELETE','PATCH') NOT NULL,
-    url VARCHAR(1000) NOT NULL,
-    headers JSON NULL,
-    params JSON NULL,
-    body LONGTEXT NULL,
-    response_status INT NULL,
-    response_time_ms INT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_history_user
-        FOREIGN KEY (user_id)
-        REFERENCES users(user_id)
-        ON DELETE CASCADE,
+DROP TABLE IF EXISTS `request_body`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `request_body` (
+  `body_id` int NOT NULL AUTO_INCREMENT,
+  `request_id` int NOT NULL,
+  `body_type` enum('raw','form-data','x-www-form-urlencoded','binary') NOT NULL,
+  `content` text,
+  PRIMARY KEY (`body_id`),
+  UNIQUE KEY `request_id` (`request_id`),
+  CONSTRAINT `request_body_ibfk_1` FOREIGN KEY (`request_id`) REFERENCES `requests` (`request_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-    CONSTRAINT fk_history_workspace
-        FOREIGN KEY (workspace_id)
-        REFERENCES workspaces(workspace_id)
-        ON DELETE CASCADE
-) ENGINE=InnoDB;
+
+DROP TABLE IF EXISTS `request_headers`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `request_headers` (
+  `header_id` int NOT NULL AUTO_INCREMENT,
+  `request_id` int NOT NULL,
+  `key` varchar(200) NOT NULL,
+  `value` varchar(1000) DEFAULT NULL,
+  PRIMARY KEY (`header_id`),
+  KEY `request_id` (`request_id`),
+  CONSTRAINT `request_headers_ibfk_1` FOREIGN KEY (`request_id`) REFERENCES `requests` (`request_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+DROP TABLE IF EXISTS `request_params`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `request_params` (
+  `param_id` int NOT NULL AUTO_INCREMENT,
+  `request_id` int NOT NULL,
+  `key` varchar(200) NOT NULL,
+  `value` varchar(1000) DEFAULT NULL,
+  PRIMARY KEY (`param_id`),
+  KEY `request_id` (`request_id`),
+  CONSTRAINT `request_params_ibfk_1` FOREIGN KEY (`request_id`) REFERENCES `requests` (`request_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+DROP TABLE IF EXISTS `requests`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `requests` (
+  `request_id` int NOT NULL AUTO_INCREMENT,
+  `request_name` varchar(200) NOT NULL,
+  `method` enum('GET','POST','PUT','DELETE','PATCH') NOT NULL,
+  `url` varchar(1000) NOT NULL,
+  `collection_id` int DEFAULT NULL,
+  `folder_id` int DEFAULT NULL,
+  `created_by` int NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`request_id`),
+  KEY `collection_id` (`collection_id`),
+  KEY `folder_id` (`folder_id`),
+  KEY `created_by` (`created_by`),
+  CONSTRAINT `requests_ibfk_1` FOREIGN KEY (`collection_id`) REFERENCES `collections` (`collection_id`) ON DELETE SET NULL,
+  CONSTRAINT `requests_ibfk_2` FOREIGN KEY (`folder_id`) REFERENCES `folders` (`folder_id`) ON DELETE SET NULL,
+  CONSTRAINT `requests_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=122 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+DROP TABLE IF EXISTS `responses`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `responses` (
+  `response_id` int NOT NULL AUTO_INCREMENT,
+  `request_id` int NOT NULL,
+  `status_code` int DEFAULT NULL,
+  `response_body` text,
+  `response_time_ms` int DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`response_id`),
+  KEY `request_id` (`request_id`),
+  CONSTRAINT `responses_ibfk_1` FOREIGN KEY (`request_id`) REFERENCES `requests` (`request_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+DROP TABLE IF EXISTS `users`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `users` (
+  `user_id` int NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`user_id`),
+  UNIQUE KEY `username` (`username`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+DROP TABLE IF EXISTS `workspaces`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `workspaces` (
+  `workspace_id` int NOT NULL AUTO_INCREMENT,
+  `workspace_name` varchar(150) NOT NULL,
+  `created_by` int NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`workspace_id`),
+  KEY `created_by` (`created_by`),
+  CONSTRAINT `workspaces_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --------------------------------------------------------------------------------
 -- Insert sample data (5–10 rows per table)

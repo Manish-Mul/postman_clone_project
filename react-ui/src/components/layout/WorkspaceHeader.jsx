@@ -2,13 +2,39 @@ import React, { useContext, useState, useRef, useEffect } from 'react';
 import { WorkspacesContext } from '../../contexts/Workspaces';
 
 const WorkspaceHeader = () => {
-  const { workspaces, currentWorkspaceId, updateWorkspace } = useContext(WorkspacesContext);
+  const { workspaces, currentWorkspaceId, updateWorkspace, loading } = useContext(WorkspacesContext);
   
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef(null);
   
   const currentWorkspace = workspaces.find(ws => ws.workspace_id === currentWorkspaceId);
+
+  console.log('WorkspaceHeader:', { 
+    currentWorkspaceId, 
+    workspacesCount: workspaces.length,
+    loading,
+    currentWorkspace 
+  });
+
+  // Show loading state
+  if (loading && !currentWorkspace) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        padding: '8px 20px',
+        borderBottom: '1px solid #e0e0e0',
+        background: '#fff',
+        height: '48px', 
+        flexShrink: 0 
+      }}>
+        <span style={{ fontSize: '18px' }}>👤</span>
+        <span style={{ fontSize: '14px', color: '#999' }}>Loading workspace...</span>
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -48,6 +74,8 @@ const WorkspaceHeader = () => {
       setEditValue('');
     }
   };
+
+  console.log('WorkspaceHeader currentWorkspaceId', currentWorkspaceId, workspaces);
 
   return (
     <div style={{

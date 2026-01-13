@@ -59,10 +59,53 @@ function reducer(state, action) {
           ...state.folders,
           [action.collectionId]: [
             ...(state.folders[action.collectionId] || []),
-            action.payload
-          ]
-        }
+            action.payload,
+          ],
+        },
       };
+
+    case 'DELETE_FOLDER':
+      return {
+        ...state,
+        folders: Object.fromEntries(
+          Object.entries(state.folders).map(([collectionId, list]) => [
+            collectionId,
+            list.filter(f => f.folder_id !== action.folderId),
+          ])
+        ),
+      };
+
+    case 'UPDATE_FOLDER':
+      return {
+        ...state,
+        folders: Object.fromEntries(
+          Object.entries(state.folders).map(([collectionId, list]) => [
+            collectionId,
+            list.map(f =>
+              f.folder_id === action.folderId ? { ...f, ...action.payload } : f
+            ),
+          ])
+        ),
+      };
+
+    case 'DELETE_REQUEST': {
+      const { workspaceId, collectionId, requestId } = action;
+
+      return {
+        ...state,
+        [workspaceId]: (state[workspaceId] || []).map(col =>
+          col.collection_id !== collectionId
+            ? col
+            : {
+              ...col,
+              requests: (col.requests || []).filter(
+                r => r.request_id !== requestId
+              ),
+            }
+        ),
+      };
+    }
+
     default:
       return state;
   }
@@ -355,68 +398,58 @@ const CollectionsProvider = ({ children }) => {
     }
   };
   // Delete request from collection
-  const deleteRequest = async (requestId) => {
-    if (!token) {
-      console.error('No token found');
-      return;
-    }
+  const deleteRequest = async (requestId, collectionId, workspaceId) => {
+    await fetch(`http://localhost:3000/requests/${requestId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
 
-    try {
-      const response = await fetch(`http://localhost:3000/requests/${requestId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete request');
-      }
-
-      console.log('Deleted request');
-
-      // Refetch collections to update UI
-      await refetchCollections();
-
-      return true;
-    } catch (err) {
-      console.error('Error deleting request:', err);
-      setError(err.message);
-      throw err;
-    }
+    dispatch({
+      type: 'DELETE_REQUEST',
+      workspaceId,
+      collectionId,
+      requestId
+    });
   };
 
   const createFolder = async (collectionId, name, parentId = null) => {
-  try {
-    const res = await fetch('http://localhost:3000/folders', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        folder_name: name,
-        collection_id: collectionId,
-        parent_folder_id: parentId,
-        created_by: user.user_id,
-      }),
-    });
+    try {
+      const res = await fetch('http://localhost:3000/folders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          folder_name: name,
+          collection_id: collectionId,
+          parent_folder_id: parentId,
+          created_by: user.user_id,
+        }),
+      });
 
-    if (!res.ok) throw new Error('Failed to create folder');
+      if (!res.ok) throw new Error('Failed to create folder');
 
-    const folder = await res.json();
+      const raw = await res.json();
+      // Normalize to the shape the UI expects
+      const folder = {
+        folder_id: raw.id,
+        folder_name: raw.folder_name,
+        collection_id: raw.collection_id,
+        parent_folder_id: raw.parent_folder_id,
+      };
 
-    dispatch({
-      type: 'ADD_FOLDER',
-      collectionId,
-      payload: folder,
-    });
-  } catch (err) {
-    console.error('Error creating folder:', err);
-    setError(err.message);
-    setLoading(false);  // Ensure loading is turned off on error
-  }
-};
+      dispatch({
+        type: 'ADD_FOLDER',
+        collectionId,
+        payload: folder,
+      });
+    } catch (err) {
+      console.error('Error creating folder:', err);
+      setError(err.message);
+      setLoading(false);
+    }
+  };
 
   const deleteFolder = async (folderId) => {
     try {
@@ -437,33 +470,24 @@ const CollectionsProvider = ({ children }) => {
     }
   };
 
-  const renameFolder = async (folderId, name) => {
-    await fetch(`http://localhost:3000/folders/${folderId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ folder_name: name })
-    });
-    dispatch({ type: 'UPDATE_FOLDER', folderId, payload: { folder_name: name } });
-  };
-
   const updateFolder = async (folderId, name) => {
-  try {
-    const res = await fetch(`http://localhost:3000/folders/${folderId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ folder_name: name }),
-    });
-    if (!res.ok) throw new Error('Failed to update folder');
+    try {
+      const res = await fetch(`http://localhost:3000/folders/${folderId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ folder_name: name }),
+      });
+      if (!res.ok) throw new Error('Failed to update folder');
 
-    dispatch({ type: 'UPDATE_FOLDER', folderId, payload: { folder_name: name } });
-  } catch (err) {
-    console.error('Error updating folder', err);
-    setError(err.message);
-  }
-};
+      dispatch({ type: 'UPDATE_FOLDER', folderId, payload: { folder_name: name } });
+    } catch (err) {
+      console.error('Error updating folder', err);
+      setError(err.message);
+    }
+  };
 
   return (
     <CollectionsContext.Provider
@@ -472,7 +496,6 @@ const CollectionsProvider = ({ children }) => {
         folders: state.folders || [],
         createFolder,
         deleteFolder,
-        renameFolder,
         updateFolder,
         dispatch,
         loading,

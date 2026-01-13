@@ -6,8 +6,9 @@ import styles from './playground.module.css';
 import RequestParamsTable from './RequestParamsTable';
 import RequestBody from './RequestBody';
 import RequestHeadersTable from './RequestHeadersTable';
+import LocalVariablesPanel from './LocalVariablesPanel';
 
-const PayloadForm = () => {
+const PayloadForm = ({ localVars, setLocalVars }) => {
   const { state } = useContext(Context);
   const [apiSettings, setApiSettings] = useState(
     state.formData.payload ? 'body' : 'qp'
@@ -40,7 +41,7 @@ const PayloadForm = () => {
           }
         >
           Authorization
-          {state.auth && <span className={styles.green_dot}></span>}
+          {state.auth?.type !== 'none' && <span className={styles.green_dot}></span>}
         </li>
         <li
           onClick={(e) => setApiSettings('headers')}
@@ -70,7 +71,18 @@ const PayloadForm = () => {
               <span className={styles.green_dot}></span>
             )}
         </li>
-        
+
+        <li
+          onClick={() => setApiSettings('vars')}
+          className={
+            apiSettings === 'vars'
+              ? styles.payload_tab_active
+              : styles.payload_tab
+          }
+        >
+          Variables
+        </li>
+
       </ul>
       {(() => {
         switch (apiSettings) {
@@ -82,6 +94,8 @@ const PayloadForm = () => {
             return <RequestHeadersTable />;
           case 'body':
             return <RequestBody />;
+          case 'vars':
+            return <LocalVariablesPanel localVars={localVars} setLocalVars={setLocalVars} />;
           default:
             return null;
         }

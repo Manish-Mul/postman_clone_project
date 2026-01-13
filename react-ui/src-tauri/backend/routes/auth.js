@@ -1,60 +1,86 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
-const bcrypt = require("bcryptjs");
+const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-const SECRET_KEY = "your_secret_key_here"; 
+const SECRET_KEY = process.env.JWT_SECRET || "dev-secret-change-me";
 
-// Signup route
+// --------------------
+// Signup
+// --------------------
 router.post("/signup", async (req, res) => {
-  const { username, email, password } = req.body;
+  try {
+    const { username, email, password } = req.body;
 
-  if (!username || !email || !password)
-    return res.status(400).json({ error: "All fields are required" });
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-  const sql = "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)";
-  db.query(sql, [username, email, hashedPassword], (err) => {
-    if (err) return res.status(500).json({ error: "User already exists or DB error" });
-    res.status(201).json({ message: "User registered successfully" });
-  });
+    const sql = `
+      INSERT INTO users (username, email, password_hash, created_at)
+      VALUES (?, ?, ?, datetime('now'))
+    `;
+
+    db.run(sql, [username, email, hashedPassword], function (err) {
+      if (err) {
+        if (err.message.includes("UNIQUE")) {
+          return res.status(409).json({ error: "User already exists" });
+        }
+        console.error("Signup error:", err);
+        return res.status(500).json({ error: "Database error" });
+      }
+
+      res.status(201).json({ message: "User registered successfully" });
+    });
+  } catch (err) {
+    console.error("Signup crash:", err);
+    res.status(500).json({ error: "Signup failed" });
+  }
 });
 
-// Login route 
+// --------------------
+// Login
+// --------------------
 router.post("/login", (req, res) => {
   const { email, password } = req.body;
 
-  const sql = "SELECT * FROM users WHERE email = ?";
-  db.query(sql, [email], async (err, results) => {
-    if (err) return res.status(500).json({ error: "Database error" });
-    if (results.length === 0)
-      return res.status(400).json({ error: "Invalid email or password" });
+  const sql = `SELECT * FROM users WHERE email = ?`;
 
-    const user = results[0];
-    
-    // Check password
+  db.get(sql, [email], async (err, user) => {
+    if (err) {
+      console.error("Login DB error:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
+
+    if (!user) {
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch)
-      return res.status(400).json({ error: "Invalid email or password" });
+    if (!isMatch) {
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
 
-    // Create token with user_id
     const token = jwt.sign(
-      { user_id: user.user_id, email: user.email, username: user.username }, 
-      SECRET_KEY, 
-      { expiresIn: "1h" }
+      {
+        user_id: user.user_id,
+        email: user.email,
+        username: user.username,
+      },
+      SECRET_KEY,
+      { expiresIn: "7d" }
     );
 
-    // Return user data with user_id
-    res.json({ 
-      message: "Login successful", 
+    res.json({
       token,
       user: {
         user_id: user.user_id,
         username: user.username,
-        email: user.email
-      }
+        email: user.email,
+      },
     });
   });
 });

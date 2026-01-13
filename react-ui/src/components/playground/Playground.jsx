@@ -8,9 +8,18 @@ import ResponseViewer from './ResponseViewer';
 import Overview from './Overview';
 import styles from './playground.module.css';
 import SaveToCollectionModal from '../modals/SaveToCollectionModal';
+import { useLocalStorage } from '../hooks/useLocalStorage';
+import { WorkspacesContext } from '../../contexts/Workspaces';
+//import BackupControls from '../../components/settings/BackupControls';
 
 const Playground = () => {
   const { state, dispatch } = useContext(Context);
+  const { currentWorkspaceId } = useContext(WorkspacesContext);
+
+  const [localVars, setLocalVars] = useLocalStorage(
+    `localVars:${currentWorkspaceId}`,
+    [{ key: '', value: '' }]
+  );
 
   useEffect(() => {
     const tab = state.tabs.find(t => t.id === state.currentTabId);
@@ -22,6 +31,8 @@ const Playground = () => {
           url: tab.url || '',
           // keep params as existing array; don't overwrite with string
           payload: tab.payload || '',
+          bodyType: 'raw',       // or tab.bodyType if you store it per tab
+          rawBodyType: 'json',
         },
       });
     }
@@ -106,7 +117,7 @@ const Playground = () => {
             </div>
 
             {/* URL and main content */}
-            <URLBox />
+            <URLBox localVars={localVars} />
 
             <div
               className={
@@ -115,7 +126,7 @@ const Playground = () => {
                   : styles.panel_horizontal
               }
             >
-              <PayloadForm />
+              <PayloadForm localVars={localVars} setLocalVars={setLocalVars} />
               <ResponseViewer />
             </div>
           </div>

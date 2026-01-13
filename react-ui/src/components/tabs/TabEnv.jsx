@@ -3,30 +3,42 @@ import styles from './tab.module.css';
 import image from '../../images/no-env.png';
 import { EnvironmentsContext } from '../../contexts/Environments';
 import { Context } from '../../contexts/Store';
+import { WorkspacesContext } from '../../contexts/Workspaces';
 
 const TabEnv = () => {
-  const { environments, createEnvironment, updateEnvironment, deleteEnvironment } = useContext(EnvironmentsContext);
-  const { state } = useContext(Context);
+  const {
+    environments,
+    createEnvironment,
+    updateEnvironment,
+    deleteEnvironment,
+    activeEnvironmentId,
+    setActiveEnvironmentId
+  } = useContext(EnvironmentsContext);
 
+  const { state } = useContext(Context);
+  const { currentWorkspaceId } = useContext(WorkspacesContext);
 
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState(null);
   const [newEnvName, setNewEnvName] = useState('');
-  const [variables, setVariables] = useState([{ key: '', value: '' }]);
+  const [variables, setVariables] = useState([{ key: '', value: '', isSecret: false }]);
 
-  // Only one useMemo for currentEnvironments
-  const currentEnvironments = useMemo(() => {
-    return environments[state.currentWorkspaceId] || [];
-  }, [environments, state.currentWorkspaceId]);
+  // Get environments for current workspace
+  const currentEnvironments = useMemo(
+    () => environments[currentWorkspaceId] || [],
+    [environments, currentWorkspaceId]
+  );
 
-  // Use createEnvironment from context (database-backed)
+  console.log('TabEnv - Active Environment ID:', activeEnvironmentId);
+  console.log('TabEnv - Current Environments:', currentEnvironments);
+
   const handleCreate = async () => {
     if (!newEnvName.trim()) return;
 
     const validVariables = variables.filter(v => v.key.trim());
 
     try {
-      await createEnvironment(state.currentWorkspaceId, newEnvName.trim(), validVariables);
+      await createEnvironment(currentWorkspaceId, newEnvName.trim(), validVariables);
 
       setNewEnvName('');
       setVariables([{ key: '', value: '' }]);
@@ -39,17 +51,20 @@ const TabEnv = () => {
   const handleEdit = (env) => {
     setEditing(env.id);
     setNewEnvName(env.name);
-    setVariables(env.variables.length ? env.variables : [{ key: '', value: '' }]);
+    setVariables(
+      env.variables.length
+        ? env.variables.map(v => ({ ...v, isSecret: !!v.isSecret }))
+        : [{ key: '', value: '', isSecret: false }]
+    );
   };
 
-  // Use updateEnvironment from context (database-backed)
   const handleUpdate = async () => {
     if (!newEnvName.trim()) return;
 
     const validVariables = variables.filter(v => v.key.trim());
 
     try {
-      await updateEnvironment(state.currentWorkspaceId, editing, newEnvName.trim(), validVariables);
+      await updateEnvironment(currentWorkspaceId, editing, newEnvName.trim(), validVariables);
 
       setEditing(null);
       setNewEnvName('');
@@ -59,19 +74,18 @@ const TabEnv = () => {
     }
   };
 
-  // Use deleteEnvironment from context (database-backed)
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this environment?')) return;
 
     try {
-      await deleteEnvironment(state.currentWorkspaceId, id);
+      await deleteEnvironment(currentWorkspaceId, id);
     } catch (err) {
       alert('Failed to delete environment');
     }
   };
 
   const addVariable = () => {
-    setVariables([...variables, { key: '', value: '' }]);
+    setVariables([...variables, { key: '', value: '', isSecret: false }]);
   };
 
   const updateVariable = (index, field, value) => {
@@ -101,217 +115,166 @@ const TabEnv = () => {
   }
 
   return (
-    <div style={{ 
-      padding: '1rem', 
-      height: '100%',
-      overflowY: 'auto',
-      maxHeight: 'calc(100vh - 200px)'
-    }}>
-      <div style={{ 
-        marginBottom: 16, 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        position: 'sticky',
-        top: 0,
-        background: 'var(--panel-bg)',
-        zIndex: 10,
-        paddingBottom: 8
-      }}>
+    <div style={{ padding: '1rem', height: '100%', overflowY: 'auto', maxHeight: 'calc(100vh - 200px)' }}>
+      <div
+        style={{
+          marginBottom: 16,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          position: 'sticky',
+          top: 0,
+          background: 'var(--panel-bg)',
+          zIndex: 10,
+          paddingBottom: 8,
+        }}
+      >
         <h4 style={{ margin: 0 }}>Environments</h4>
-        {!creating && !editing && (
-          <button
-            onClick={() => setCreating(true)}
-            style={{
-              padding: '6px 12px',
-              background: 'var(--theme-color)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 4,
-              cursor: 'pointer',
-            }}
-          >
-            + New
-          </button>
-        )}
+
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+
+          {!creating && !editing && (
+            <button
+              onClick={() => setCreating(true)}
+              style={{
+                padding: '6px 12px',
+                background: 'var(--theme-color)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+              }}
+            >
+              + New
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Environment List */}
-      {!creating && !editing && currentEnvironments.map(env => (
-        <div
-          key={env.id}
-          style={{
-            background: 'var(--panel-bg)',
-            border: '1px solid var(--border-color)',
-            borderRadius: 6,
-            padding: 12,
-            marginBottom: 12,
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <strong>{env.name}</strong>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
-                {env.variables.length} variable(s)
+      {/* List existing environments */}
+      {!creating && !editing && currentEnvironments.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {currentEnvironments.map((env) => (
+            <div
+              key={env.id}
+              style={{
+                padding: 12,
+                border: '1px solid var(--border-color)',
+                borderRadius: 6,
+                background: activeEnvironmentId === env.id ? '#f0f9ff' : '#fff',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <strong>{env.name}</strong>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => handleEdit(env)} style={{ fontSize: 12, padding: '4px 8px' }}>
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(env.id)}
+                    style={{ fontSize: 12, padding: '4px 8px', background: '#fee', color: '#c00' }}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
+              {env.variables && env.variables.length > 0 && (
+                <div style={{ fontSize: 12, color: '#666' }}>
+                  {env.variables.map((v, idx) => (
+                    <div key={idx}>
+                      <strong>{v.key}</strong>: {v.isSecret ? '••••••' : v.value}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div>
-              <button
-                onClick={() => handleEdit(env)}
-                style={{ marginRight: 8, background: 'none', border: 'none', cursor: 'pointer' }}
-                title="Edit"
-              >
-                ✏️
-              </button>
-              <button
-                onClick={() => handleDelete(env.id)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-                title="Delete"
-              >
-                🗑️
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
-      ))}
+      )}
 
-      {/* Create/Edit Form */}
-      {(creating || editing) && (
-        <div style={{ 
-          background: 'var(--panel-bg)', 
-          border: '1px solid var(--border-color)', 
-          borderRadius: 6, 
-          padding: 16,
-          maxWidth: '100%'
-        }}>
-          <h4 style={{ marginTop: 0 }}>{editing ? 'Edit Environment' : 'Create Environment'}</h4>
-          
-          <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500 }}>
-            Environment Name
-          </label>
+      {/* Create/Edit forms remain the same... */}
+      {creating && (
+        <div style={{ padding: 12, border: '1px solid var(--border-color)', borderRadius: 6 }}>
+          <h5>Create Environment</h5>
           <input
+            type="text"
+            placeholder="Environment name"
             value={newEnvName}
-            onChange={e => setNewEnvName(e.target.value)}
-            placeholder="e.g., Production"
-            style={{ 
-              width: '100%', 
-              padding: 8, 
-              marginBottom: 16, 
-              borderRadius: 4, 
-              border: '1px solid var(--border-color)',
-              boxSizing: 'border-box'
-            }}
+            onChange={(e) => setNewEnvName(e.target.value)}
+            style={{ width: '100%', padding: 8, marginBottom: 12 }}
           />
+          <h6>Variables</h6>
+          {variables.map((v, idx) => (
+            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <input
+                placeholder="Key"
+                value={v.key}
+                onChange={(e) => updateVariable(idx, 'key', e.target.value)}
+                style={{ flex: 1, padding: 6 }}
+              />
+              <input
+                type={v.isSecret ? 'password' : 'text'}
+                placeholder="Value"
+                value={v.value}
+                onChange={(e) => updateVariable(idx, 'value', e.target.value)}
+                style={{ flex: 1, padding: 6 }}
+              />
 
-          <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500 }}>
-            Variables
-          </label>
-          
-          <div style={{ 
-            maxHeight: '300px', 
-            overflowY: 'auto',
-            marginBottom: 12 
-          }}>
-            {variables.map((variable, idx) => (
-              <div key={idx} style={{ 
-                display: 'flex', 
-                gap: 6, 
-                marginBottom: 8,
-                alignItems: 'center'
-              }}>
+              <label style={{ fontSize: 12 }}>
                 <input
-                  placeholder="Key"
-                  value={variable.key}
-                  onChange={e => updateVariable(idx, 'key', e.target.value)}
-                  style={{ 
-                    flex: 1, 
-                    padding: 8, 
-                    borderRadius: 4, 
-                    border: '1px solid var(--border-color)',
-                    fontSize: 13,
-                    minWidth: 0
-                  }}
-                />
-                <input
-                  placeholder="Value"
-                  value={variable.value}
-                  onChange={e => updateVariable(idx, 'value', e.target.value)}
-                  style={{ 
-                    flex: 1, 
-                    padding: 8, 
-                    borderRadius: 4, 
-                    border: '1px solid var(--border-color)',
-                    fontSize: 13,
-                    minWidth: 0
-                  }}
-                />
-                <button
-                  onClick={() => removeVariable(idx)}
-                  style={{ 
-                    padding: '6px 10px',
-                    background: '#e74c3c', 
-                    color: '#fff', 
-                    border: 'none', 
-                    borderRadius: 4, 
-                    cursor: 'pointer',
-                    fontSize: 12,
-                    flexShrink: 0
-                  }}
-                >
-                  ✖
-                </button>
-              </div>
-            ))}
-          </div>
+                  type="checkbox"
+                  checked={v.isSecret || false}
+                  onChange={(e) => updateVariable(idx, 'isSecret', e.target.checked)}
+                /> Secret
+              </label>
 
-          <button
-            onClick={addVariable}
-            style={{ 
-              padding: '6px 12px', 
-              background: 'var(--secondary-bg)', 
-              border: '1px solid var(--border-color)', 
-              borderRadius: 4, 
-              cursor: 'pointer', 
-              marginBottom: 16,
-              fontSize: 13
-            }}
-          >
+              <button onClick={() => removeVariable(idx)}>Remove</button>
+            </div>
+          ))}
+          <button onClick={addVariable} style={{ marginBottom: 12 }}>
             + Add Variable
           </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={handleCreate}>Create</button>
+            <button onClick={() => setCreating(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button
-              onClick={editing ? handleUpdate : handleCreate}
-              style={{ 
-                padding: '8px 16px', 
-                background: 'var(--theme-color)', 
-                color: '#fff', 
-                border: 'none', 
-                borderRadius: 4, 
-                cursor: 'pointer',
-                fontSize: 14
-              }}
-            >
-              {editing ? 'Update' : 'Create'}
-            </button>
-            <button
-              onClick={() => {
-                setCreating(false);
-                setEditing(null);
-                setNewEnvName('');
-                setVariables([{ key: '', value: '' }]);
-              }}
-              style={{ 
-                padding: '8px 16px', 
-                background: 'transparent', 
-                border: '1px solid var(--border-color)', 
-                borderRadius: 4, 
-                cursor: 'pointer',
-                fontSize: 14
-              }}
-            >
-              Cancel
-            </button>
+      {editing && (
+        <div style={{ padding: 12, border: '1px solid var(--border-color)', borderRadius: 6 }}>
+          <h5>Edit Environment</h5>
+          <input
+            type="text"
+            placeholder="Environment name"
+            value={newEnvName}
+            onChange={(e) => setNewEnvName(e.target.value)}
+            style={{ width: '100%', padding: 8, marginBottom: 12 }}
+          />
+          <h6>Variables</h6>
+          {variables.map((v, idx) => (
+            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <input
+                placeholder="Key"
+                value={v.key}
+                onChange={(e) => updateVariable(idx, 'key', e.target.value)}
+                style={{ flex: 1, padding: 6 }}
+              />
+              <input
+                placeholder="Value"
+                value={v.value}
+                onChange={(e) => updateVariable(idx, 'value', e.target.value)}
+                style={{ flex: 1, padding: 6 }}
+              />
+              <button onClick={() => removeVariable(idx)}>Remove</button>
+            </div>
+          ))}
+          <button onClick={addVariable} style={{ marginBottom: 12 }}>
+            + Add Variable
+          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={handleUpdate}>Update</button>
+            <button onClick={() => setEditing(null)}>Cancel</button>
           </div>
         </div>
       )}

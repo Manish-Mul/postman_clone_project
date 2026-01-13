@@ -19,6 +19,11 @@ app.options(/.*/, cors());
 app.use(express.json());
 app.use(bodyParser.json());
 
+app.use((req, res, next) => {
+  console.log('INCOMING:', req.method, req.url);
+  next();
+});
+
 // Routes 
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
@@ -38,6 +43,7 @@ const historyRoutes = require("./routes/history");
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/workspaces", workspaceRoutes);
+console.log('Mounting /collections routes with import/export'); // in server.js
 app.use("/collections", collectionRoutes);
 app.use("/folders", folderRoutes);
 app.use("/requests", requestRoutes);
@@ -49,6 +55,8 @@ app.use("/environments", environmentRoutes);
 app.use("/variables", envVarRoutes);
 app.use("/history", historyRoutes);
 app.use("/api", curlRoutes);
+app.use('/global-variables', require('./routes/globalVariables'));
+app.use('/oauth', require('./routes/oauth'));
 
 const PORT = 3000;
 app.listen(PORT, () => {

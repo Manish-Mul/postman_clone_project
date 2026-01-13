@@ -116,3 +116,239 @@
 .tab_active {
   flex: 0 0 auto;  /* each tab keeps its width */
 }
+
+.treeFolder {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.treeFolder:hover {
+  background: #f0f3f7;
+}
+
+.treeRequest {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 6px;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #555;
+}
+
+.treeRequest:hover {
+  background: #eef4ff;
+}
+
+.treeFolder {
+  background: rgba(0,0,0,0.02);
+}
+
+.treeFolder:hover {
+  background: #f0f3f7;
+}
+
+.treeRequest {
+  font-weight: 400;
+}
+
+
+.empty_tab {
+  padding: 2rem 1rem;
+  text-align: center;
+  background: var(--panel-bg);
+  color: var(--text-color);
+  font-family: var(--font);
+}
+
+.empty_tab img {
+  object-fit: contain;
+  height: 140px;
+}
+
+.empty_tab h4 {
+  margin: 1rem 0;
+  color: var(--text-color);
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.empty_tab p {
+  margin: 1rem 0;
+  font-size: 13px;
+  color: var(--input-placeholder);
+}
+
+.empty_tab span {
+  color: var(--theme-color);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.history_list {
+  padding-block: 10px;
+  overflow-x: hidden;
+  background: var(--panel-bg);
+}
+
+.history_date {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: var(--theme-color);
+}
+
+
+.history_list::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.history_group {
+}
+
+.history_group details {
+}
+
+.history_group details summary {
+  font-size: 14px;
+  color: var(--text-color);
+  font-family: var(--font);
+  padding-inline: 10px;
+}
+.history_group details > div {
+  overflow: hidden;
+}
+.history_group details ul {
+  overflow: hidden;
+  padding-block: 4px;
+}
+
+.history_group details ul li {
+  font-size: 14px;
+  color: var(--text-color);
+  padding: 8px 10px;
+  cursor: pointer;
+  margin-block: 1px;
+  display: grid;
+  grid-template-columns: 45px 1fr;
+  align-items: center;
+  font-size: 13.5px;
+}
+
+.history_group details ul li:hover {
+  background-color: var(--drawer-hover-color);
+}
+
+.history_group details ul li span:first-of-type {
+  margin-right: 8px;
+  font-size: 10px;
+  text-align: right;
+}
+
+.history_group details ul li span:last-of-type {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history_list {
+  padding-block: 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--panel-bg);
+}
+
+.tabs_row,
+.all_tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.tab,
+.tab_active {
+  flex: 0 0 auto;  /* each tab keeps its width */
+}
+
+.treeFolder {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #333;
+}
+
+.treeFolder:hover {
+  background: #f0f3f7;
+}
+
+.treeRequest {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 6px;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #555;
+}
+
+.treeRequest:hover {
+  background: #eef4ff;
+}
+
+.treeGuide {
+  border-left: 1px dashed #e3e3e3;
+  padding-left: 6px;
+}
+
+.treeFolder {
+  background: rgba(0,0,0,0.02);
+}
+
+.treeFolder:hover {
+  background: #f0f3f7;
+}
+
+.treeRequest {
+  font-weight: 400;
+}
+
+.treeRequest span:last-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.treeRowLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.treeDelete {
+  border: none;
+  background: transparent;
+  color: #ff5f56;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 4px;
+}
+

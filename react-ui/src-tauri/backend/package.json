@@ -3,8 +3,6 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "pretauri": "xcopy /E /I /Y src-tauri\\backend\\node_modules src-tauri\\backend\\_node_modules",
-    "build": "vite build",
     "test": "jest",
     "start": "node index.js",
     "dev": "nodemon index.js"
@@ -14,27 +12,19 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "bcryptjs": "^3.0.3",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
+    "better-sqlite3": "^12.6.0",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
-    "curlconverter": "^3.4.0",
+    "curlconverter": "^4.12.0",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "mysql2": "^3.15.2"
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "jest": "^29.0.0",
     "nodemon": "^3.1.10",
-    "supertest": "^6.3.4",
-    "cross-env": "^7.0.3"
-  },
-  "pkg": {
-    "assets": [
-      ".env"
-    ],
-    "scripts": [
-      "path"
-    ]
+    "supertest": "^6.3.4"
   }
 }

@@ -2,49 +2,46 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+// CREATE header
 router.post('/', (req, res) => {
   const { request_id, key, value } = req.body;
-  db.query(
-    'INSERT INTO request_headers (request_id, key, value) VALUES (?, ?, ?)',
-    [request_id, key, value],
-    (err, result) => {
-      if (err) return res.status(500).json(err);
-      res.json({ id: result.insertId, key, value });
-    }
-  );
+
+  const result = db.prepare(`
+    INSERT INTO request_headers (request_id, key, value)
+    VALUES (?, ?, ?)
+  `).run(request_id, key, value);
+
+  res.json({ id: result.lastInsertRowid, key, value });
 });
 
+// READ all
 router.get('/', (req, res) => {
-  db.query('SELECT * FROM request_headers', (err, rows) => {
-    if (err) return res.status(500).json(err);
-    res.json(rows);
-  });
+  const rows = db.prepare('SELECT * FROM request_headers').all();
+  res.json(rows);
 });
 
+// READ by id
 router.get('/:id', (req, res) => {
-  db.query('SELECT * FROM request_headers WHERE header_id = ?', [req.params.id], (err, rows) => {
-    if (err) return res.status(500).json(err);
-    res.json(rows[0]);
-  });
+  const row = db.prepare('SELECT * FROM request_headers WHERE id = ?').get(req.params.id);
+  res.json(row);
 });
 
+// UPDATE
 router.put('/:id', (req, res) => {
   const { key, value } = req.body;
-  db.query(
-    'UPDATE request_headers SET key = ?, value = ? WHERE header_id = ?',
-    [key, value, req.params.id],
-    (err) => {
-      if (err) return res.status(500).json(err);
-      res.json({ message: 'Header updated successfully' });
-    }
-  );
+
+  db.prepare(`
+    UPDATE request_headers SET key = ?, value = ?
+    WHERE id = ?
+  `).run(key, value, req.params.id);
+
+  res.json({ message: 'Header updated successfully' });
 });
 
+// DELETE
 router.delete('/:id', (req, res) => {
-  db.query('DELETE FROM request_headers WHERE header_id = ?', [req.params.id], (err) => {
-    if (err) return res.status(500).json(err);
-    res.json({ message: 'Header deleted successfully' });
-  });
+  db.prepare('DELETE FROM request_headers WHERE id = ?').run(req.params.id);
+  res.json({ message: 'Header deleted successfully' });
 });
 
 module.exports = router;

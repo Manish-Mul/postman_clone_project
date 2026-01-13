@@ -2,49 +2,47 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+// CREATE response
 router.post('/', (req, res) => {
   const { request_id, status_code, response_body, response_time_ms } = req.body;
-  db.query(
-    'INSERT INTO responses (request_id, status_code, response_body, response_time_ms, created_at) VALUES (?, ?, ?, ?, NOW())',
-    [request_id, status_code, response_body, response_time_ms],
-    (err, result) => {
-      if (err) return res.status(500).json(err);
-      res.json({ id: result.insertId, status_code });
-    }
-  );
+
+  const result = db.prepare(`
+    INSERT INTO responses (request_id, status_code, response_body, response_time_ms, created_at)
+    VALUES (?, ?, ?, ?, datetime('now'))
+  `).run(request_id, status_code, response_body, response_time_ms);
+
+  res.json({ id: result.lastInsertRowid, status_code });
 });
 
+// READ all
 router.get('/', (req, res) => {
-  db.query('SELECT * FROM responses', (err, rows) => {
-    if (err) return res.status(500).json(err);
-    res.json(rows);
-  });
+  const rows = db.prepare('SELECT * FROM responses').all();
+  res.json(rows);
 });
 
+// READ by id
 router.get('/:id', (req, res) => {
-  db.query('SELECT * FROM responses WHERE response_id = ?', [req.params.id], (err, rows) => {
-    if (err) return res.status(500).json(err);
-    res.json(rows[0]);
-  });
+  const row = db.prepare('SELECT * FROM responses WHERE id = ?').get(req.params.id);
+  res.json(row);
 });
 
+// UPDATE
 router.put('/:id', (req, res) => {
   const { response_body } = req.body;
-  db.query(
-    'UPDATE responses SET response_body = ? WHERE response_id = ?',
-    [response_body, req.params.id],
-    (err) => {
-      if (err) return res.status(500).json(err);
-      res.json({ message: 'Response updated successfully' });
-    }
-  );
+
+  db.prepare(`
+    UPDATE responses
+    SET response_body = ?
+    WHERE id = ?
+  `).run(response_body, req.params.id);
+
+  res.json({ message: 'Response updated successfully' });
 });
 
+// DELETE
 router.delete('/:id', (req, res) => {
-  db.query('DELETE FROM responses WHERE response_id = ?', [req.params.id], (err) => {
-    if (err) return res.status(500).json(err);
-    res.json({ message: 'Response deleted successfully' });
-  });
+  db.prepare('DELETE FROM responses WHERE id = ?').run(req.params.id);
+  res.json({ message: 'Response deleted successfully' });
 });
 
 module.exports = router;

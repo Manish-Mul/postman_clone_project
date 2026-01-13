@@ -34,8 +34,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "backend/backend.exe"
-    ]
+    "resources": ["backend/.env"]
   }
 }
